@@ -344,14 +344,7 @@
 		<div class="col-sm-3 outer-box">
 			<div class = "full-width-header">
 				<div class = "container-middle">
-					<div class="dropdown">
-						<button type="button" class="btn dropdown-toggle" data-toggle="dropdown">
-						Hi {{user.firstname}}
-						</button>
-						<div class="dropdown-menu">
-							<a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
-						</div>
-					</div>
+					Hi {{user.firstname}}. <a href="{% url 'logout' %}">Logout</a>
 				</div>
 			</div>
 			<div id = "chats" class = "panel" style="height:90vh;">
