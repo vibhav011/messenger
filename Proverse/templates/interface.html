@@ -75,12 +75,10 @@
 
 		activeChat = null;
 
-		function showChat (uname) {
-			$("#InputDiv").css({"visibility" : "visible"});
-
+		function sendSeenRequest() {
 			mids = "";
 
-			for (mg of chatUsers[chatUsernames.indexOf(uname)].msgs) {
+			for (mg of chatUsers[chatUsernames.indexOf(activeChat)].msgs) {
 				if (!mg.seen && !mg.sent) {
 					mids += ";" + mg.id;
 				}
@@ -96,8 +94,13 @@
 					dataType: 'json'
 				});
 			}
+		}
+
+		function showChat (uname) {
+			$("#InputDiv").css({"visibility" : "visible"});
 
 			activeChat = uname;
+			sendSeenRequest();
 			user = chatUsers[chatUsernames.indexOf(uname)];
 			document.getElementById("activeChatName").innerHTML = user.firstname + ' ' + user.lastname;
 			document.getElementById("chatMessages").innerHTML = "";
@@ -223,6 +226,7 @@
 						else sts = "last seen at "+ data.lastSeen;
 					}
 					document.getElementById("statusOfChat").innerHTML = sts;
+					sendSeenRequest();
 				}
 			});
 		}
