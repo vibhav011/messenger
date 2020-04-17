@@ -55,6 +55,32 @@ def homepage(request) :
 
 	return render(request, 'interface.html', {'user' : usr, 'msgss' : msgs, 'chats' : chats, 'blacklist' : blacklist})
 
+def mobileHomepage(request) :
+	if not request.session.session_key :
+		request.session.save()
+
+	usr = WhoIsLoggedIn(request)
+
+	if usr is None :
+		return redirect(login)
+
+	msgs = []
+
+	for msg in Message.objects.all() :
+		if msg.sender == usr.username or msg.receiver == usr.username:
+			msgs.append(msg)
+	
+	chatsUsers = usr.chats.split(';')
+	chats = []
+	for uname in chatsUsers :
+		if uname != "" :
+			u = User.objects.get(username = uname)
+			chats.append(UserSend(u.username, u.firstname, u.lastname, u.onlineNow, u.lastActive))
+
+	blacklist = usr.blacklist.split(';')
+
+	return render(request, 'mobileinterface.html', {'user' : usr, 'msgss' : msgs, 'chats' : chats, 'blacklist' : blacklist})
+
 def login(request) :
 	if WhoIsLoggedIn(request) is not None :
 		return redirect(homepage)

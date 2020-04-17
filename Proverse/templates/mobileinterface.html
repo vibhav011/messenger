@@ -12,12 +12,12 @@
 
 	<script>
 
-		if (window.innerWidth <= 480 || window.innerHeight > window.innerWidth) {
-			window.location = "{% url 'mobilehome' %}";
+		if (window.innerWidth > 480 && window.innerHeight < window.innerWidth) {
+			window.location = "{% url 'home' %}";
 		}
 		$(window).resize(function(){
-			if (window.innerWidth <= 480 || window.innerHeight > window.innerWidth) {
-				window.location = "{% url 'mobilehome' %}";
+			if (window.innerWidth > 480 && window.innerHeight < window.innerWidth) {
+				window.location = "{% url 'home' %}";
 			}
 		});
 
@@ -107,6 +107,8 @@
 
 		function showChat (uname) {
 			$("#InputDiv").css({"visibility" : "visible"});
+			$("#page1").css("display", "none");
+			$("#page2").css("display", "block");
 
 			activeChat = uname;
 			sendSeenRequest();
@@ -117,6 +119,11 @@
 			for (var i = 0; i < user.msgs.length; i++) {
 				document.getElementById("chatMessages").innerHTML += createMessage(user.msgs[i]);
 			}
+		}
+
+		function back() {
+			$("#page1").css("display", "block");
+			$("#page2").css("display", "none");
 		}
 
 		function newChat() {
@@ -251,12 +258,31 @@
 	</script>
 
 	<style>
+		.container-fluid {
+			padding: 0;
+			margin : 0;
+			border : 0;
+		}
 		.outer-box {
 			min-height: 100vh;
 			max-height: 100vh;
+			min-width: 100vw;
+			max-width: 100vw;
 			height: 100vh;
+			width: 100vw;
+			position: absolute;
 			overflow-y: auto;
 			padding: 0;
+			margin: 0;
+		}
+		#page1 {
+			z-index : 1000;
+			background-color: #fff;
+			display: block;
+		}
+		#page2 {
+			z-index: 10;
+			display: none;
 		}
 		.full-width-header {
 			width : 100%;
@@ -349,8 +375,8 @@
 </head>
 <body>
 	<div class="container-fluid">
-	<div class="row">
-		<div class="col-sm-3 outer-box">
+
+		<div id = "page1" class="outer-box">
 			<div class = "full-width-header">
 				<div class = "container-middle">
 					Hi {{user.firstname}}. <a href="{% url 'logout' %}">Logout</a>
@@ -370,9 +396,10 @@
 				{% endfor %}
 			</div>
 		</div>
-		<div class="col-sm-9 outer-box">
+		<div id = "page2" class="outer-box">
 			<div class = "full-width-header">
 				<div class = "container-middle">
+					<i class="fa fa-arrow-left" aria-hidden="true" style="float: left; color:#209AFF; margin-right: 3vw; margin-left: 1vw;" onclick="back()"></i>
 					<div id = "activeChatName">Username</div>
 					<div id = "statusOfChat"></div>
 				</div>
@@ -385,10 +412,8 @@
 						<button class = "btn btn-primary" onclick="sendMessage()">Send</button>
 					</div>
 				</div>
-				<!-- <input type = "text" class="form-control" placeholder="Type a message..." id = "textmessage"><button class = "btn" onclick = "sendMessage()">Send</button> -->
 			</div>
 		</div>
-	</div>
 	</div>
 </body>
 </html>
