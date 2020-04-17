@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ProVerse</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script> -->
+
+	<script>
+		//var socket = io.connect('http://' + document.domain + ':'+location.port);
+
+		class Message {
+			constructor (text, datetime, sent, delivered, seen, id = -1) {
+				this.text = text;
+				this.datetime = datetime;
+				this.sent = sent;
+				this.delivered = delivered;
+				this.seen = seen;
+				this.id = id;
+				this.divID = new Date().getTime();
+			}
+		}
+
+		class User {
+			constructor(username, firstname, lastname, onlineNow, lastActive) {
+				this.username = username;
+				this.firstname = firstname;
+				this.lastname = lastname;
+				this.onlineNow = onlineNow;
+				this.lastActive = lastActive;
+				this.msgs = [];
+			}
+		}
+
+		function createMessage(message) {
+			if (message.sent) {
+				var st = "Sending...";
+				if (message.id != -1) {st = "Sent";}
+				if (message.delivered) {st = "Delivered";}
+				if (message.seen) {st = "Seen";}
+
+				return '<div class = "messageBox" id = "' + message.divID+'"><div class = "messageSentWrapper"><div class = "messageSent">'+ message.text +'</div><div class = "messageTime">' + message.datetime + '</div><div class = "messageStatus" id = "statusof' + message.id + '">'+st+'</div></div></div><br>';
+			}
+			else {
+				return '<div class = "messageBox" id = "' + message.divID+'"><div class = "messageReceivedWrapper"><div class = "messageReceived">'+ message.text +'</div><div class = "messageTime">' + message.datetime + '</div></div></div><br>';
+			}
+		}
+		var True = true;
+		var False = false;
+
+		chatUsers = [];
+		chatUsernames = [];
+		{% for cu in chats %}
+			chatUsers.push(new User('{{cu.username}}','{{cu.firstname}}', '{{cu.lastname}}', {{cu.onlineNow}}, '{{cu.lastActive}}'));
+			chatUsernames.push('{{cu.username}}');
+		{% endfor %}
+		var mszid, sender, receiver, text, datetime;
+		{% for m in msgss %}
+			mszid = '{{m.msgID}}';
+			sender = '{{m.sender}}';
+			receiver = '{{m.receiver}}';
+			text = '{{m.msg}}';
+			datetime = '{{m.datetime}}';
+			
+			if (sender == '{{ user.username }}') {
+				chatUsers[chatUsernames.indexOf(receiver)].msgs.push(new Message(text, datetime, true, {{m.delivered}}, {{m.seen}}, mszid));
+			}
+			else {
+				chatUsers[chatUsernames.indexOf(sender)].msgs.push(new Message(text, datetime, false, {{m.delivered}}, {{m.seen}}, mszid));
+			}
+		{% endfor %}
+
+		activeChat = null;
+
+		function showChat (uname) {
+			$("#InputDiv").css({"visibility" : "visible"});
+
+			mids = "";
+
+			for (mg of chatUsers[chatUsernames.indexOf(uname)].msgs) {
+				if (!mg.seen && !mg.sent) {
+					mids += ";" + mg.id;
+				}
+			}
+
+			if (mids) {
+				$.ajax({
+					type : "GET",
+					url: '{% url "seenrequest" %}',
+					data: {
+						'mids': mids,
+					},
+					dataType: 'json'
+				});
+			}
+
+			activeChat = uname;
+			user = chatUsers[chatUsernames.indexOf(uname)];
+			document.getElementById("activeChatName").innerHTML = user.firstname + ' ' + user.lastname;
+			document.getElementById("chatMessages").innerHTML = "";
+
+			for (var i = 0; i < user.msgs.length; i++) {
+				document.getElementById("chatMessages").innerHTML += createMessage(user.msgs[i]);
+			}
+		}
+
+		function newChat() {
+			var uname = $("#newUser").val();
+			if (chatUsernames.indexOf(uname) != -1) {showChat(uname);}
+			else {
+				$.ajax({
+					type : "POST",
+					url: '{% url "newchatrequest" %}',
+					data: {
+						'myself': '{{ user.username }}',
+						'withwhom' : uname,
+						'csrfmiddlewaretoken': '{{ csrf_token }}',
+					},
+					dataType: 'json',
+					success: function (data) {
+						if (data.exists) {
+							document.getElementById("chats").innerHTML += '<div class = "chatPerson" onclick = "showChat('+data.userDetails.username+')">'+data.userDetails.firstname+' '+data.userDetails.lastname+'</div>';
+							chatUsernames.push(uname);
+							chatUsers.push(new User(data.userDetails.username, data.userDetails.firstname, data.userDetails.lastname, data.userDetails.onlineNow, data.userDetails.lastActive));
+							showChat(uname);
+						}
+						else {
+							alert("No User Found");
+						}
+					}
+				});
+			}
+		}
+
+		function dateFormat() {
+			var d = new Date();
+			var m = d.getMonth()+1;
+			return d.getDate() + '/' + m + '/' + d.getFullYear() + ' ' + d.getHours() + ':' + d.getMinutes();
+		}
+
+		function sendMessage() {
+			var msg = $("#textmessage").val();
+			if (msg != "") {
+				var m = new Message(msg, dateFormat(), true, false, false);
+				var divid = m.divID;
+				var blah = chatUsernames.indexOf(activeChat);
+				var ind = chatUsers[blah].msgs.length;
+				chatUsers[blah].msgs.push(m);
+				$("#chatMessages").append(createMessage(m));
+
+				$.ajax({
+					type : "POST",
+					url: '{% url "sendnewmessage" %}',
+					data: {
+						'from' : '{{ user.username }}',
+						'to' : activeChat,
+						'message' : msg,
+						'csrfmiddlewaretoken': '{{ csrf_token }}',
+					},
+					dataType: 'json',
+					success: function (data) {
+						chatUsers[blah].msgs[ind].id = data.mid;
+						document.getElementById(divid).innerHTML = '<div class="messageSentWrapper"><div class = "messageSent">'+ m.text +'</div><div class = "messageTime">' + m.datetime + '</div><div class = "messageStatus" id = "statusof' + data.mid + '">Sent</div></div>';
+					}
+				});
+				$("#textmessage").val('').focus();
+			}
+		}
+
+		function getMessage() {
+			$.ajax({
+				type : "POST",
+				url: '{% url "getnewmessage" %}',
+				data: {
+					'from' : '{{ user.username }}',
+					'userStatus' : (activeChat != null) ? activeChat : '{{user.username}}',
+					'csrfmiddlewaretoken': '{{ csrf_token }}',
+				},
+				dataType: 'json',
+				success: function (data) {
+					for (usr of data.users) {
+						if (chatUsernames.indexOf(usr.username) == -1) {
+							chatUsernames.push(usr.username);
+							chatUsers.push(new User(usr.username, usr.firstname, usr.lastname, usr.onlineNow, usr.lastActive));
+							document.getElementById("chats").innerHTML += '<div class = "chatPerson" onclick = "showChat(\''+usr.username+'\')">'+usr.firstname+' '+usr.lastname+'</div>';
+						}
+					}
+					for (msg of data.msgs) {
+						var mmm = new Message(msg.msg, msg.datetime, false, true, false, msg.msgID);
+						chatUsers[chatUsernames.indexOf(msg.sender)].msgs.push(mmm);
+						if (activeChat == msg.sender) {
+							$("#chatMessages").append(createMessage(mmm));
+						}
+					}
+					for (d of data.delv) {
+						var ind = chatUsernames.indexOf(d.receiver);
+						for (var i = 0; i < chatUsers[ind].msgs.length; i++) {
+							if (chatUsers[ind].msgs[i].id == d.msgID) {
+								chatUsers[ind].msgs[i].delivered = true;
+								if (activeChat == d.receiver) {
+									document.getElementById("statusof"+d.msgID).innerHTML = "Delivered";
+								}
+								break;
+							}
+						}
+					}
+					for (s of data.seen) {
+						var ind = chatUsernames.indexOf(s.receiver);
+						for (var i = 0; i < chatUsers[ind].msgs.length; i++) {
+							if (chatUsers[ind].msgs[i].id == s.msgID) {
+								chatUsers[ind].msgs[i].seen = true;
+								document.getElementById("statusof"+s.msgID).innerHTML = "Seen";
+								break;
+							}
+						}
+					}
+					var sts = "";
+					if (activeChat != null) {
+						if (data.userOnline) sts = "online";
+						else sts = "last seen at "+ data.lastSeen;
+					}
+					document.getElementById("statusOfChat").innerHTML = sts;
+				}
+			});
+		}
+		setInterval(getMessage, 1000);
+
+		document.addEventListener("keydown", function(e) {
+			if (e.keyCode == 13) {
+				if ($("#textmessage").is(':focus')) {sendMessage();}
+				if ($("#newUser").is(':focus')) {newChat();}
+			}
+		});
+
+	</script>
+
+	<style>
+		.outer-box {
+			min-height: 100vh;
+			max-height: 100vh;
+			height: 100vh;
+			overflow-y: auto;
+			padding: 0;
+		}
+		.full-width-header {
+			width : 100%;
+			height : 10vh;
+			border-right: 1px solid grey;
+			border-bottom: 1px solid grey;
+			padding-left: 3vw;
+		}
+		.container-middle {
+			margin: 0;
+			position: relative;
+			top: 50%;
+			-ms-transform: translateY(-50%);
+			transform: translateY(-50%);
+		}
+		.panel {
+			width : 100%;
+			border-right: 1px solid grey;
+			overflow-y: auto;
+		}
+		#activeChatName {
+			font-weight: bold;
+		}
+		#statusOfChat {
+			color : #999999;
+			font-size : 12px;
+		}
+		.chatPerson {
+			margin-top: 0;
+			margin-bottom : 0;
+			margin-left: 1vw;
+			margin-right: 1vw;
+			text-align: center;
+			font-size: 1.1em;
+			border-radius: 10px;
+			padding : 10px;
+		}
+		.chatPerson:hover {
+			background-color: #EDECEC;
+			cursor : pointer;
+		}
+		.messageBox {
+			float : left;
+			position : relative;
+			min-width : 100%;
+			padding-top : 10px;
+		}
+		.messageSentWrapper, .messageReceivedWrapper {
+			position: relative;
+			max-width : 80%;
+			border-radius: 10px;
+			padding : 10px;
+		}
+		.messageSentWrapper {
+			float : right;
+			background-color: #209AFF;
+			color: #fff;
+		}
+		.messageReceivedWrapper {
+			float : left;
+			background-color: #EDECEC;
+			color: #000;
+		}
+		.messageStatus, .messageTime {
+			font-size: 12px;
+		}
+		.messageStatus {
+			float: right;
+			margin-left: 15px;
+		}
+		.messageTime {
+			float: left;
+		}
+		#InputDiv {
+			height:15vh;
+			padding-left: 2vw;
+			padding-right: 2vw;
+			padding-top : 3vh;
+			visibility: hidden;
+		}
+		.input-group {
+			z-index : 1 !important;
+		}
+		.dropdown-menu {
+			z-index : 9999 !important;
+		}
+	</style>
+
+
+</head>
+<body>
+	<div class="container-fluid">
+	<div class="row">
+		<div class="col-sm-3 outer-box">
+			<div class = "full-width-header">
+				<div class = "container-middle">
+					<div class="dropdown">
+						<button type="button" class="btn dropdown-toggle" data-toggle="dropdown">
+						Hi {{user.firstname}}
+						</button>
+						<div class="dropdown-menu">
+							<a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id = "chats" class = "panel" style="height:90vh;">
+				
+				<div class="input-group mb-3">
+					<input type="text" class="form-control" placeholder="Username" id = "newUser">
+					<div class="input-group-append">
+						<button class="btn btn-success" onclick="newChat()">Go</button>  
+					</div>
+				</div>
+				
+				{% for usr in chats %}
+					<div class = "chatPerson" onclick = "showChat('{{ usr.username }}')">{{ usr.firstname }} {{ usr.lastname }}</div>
+				{% endfor %}
+			</div>
+		</div>
+		<div class="col-sm-9 outer-box">
+			<div class = "full-width-header">
+				<div class = "container-middle">
+					<div id = "activeChatName">Username</div>
+					<div id = "statusOfChat"></div>
+				</div>
+			</div>
+			<div class = "panel" id = "chatMessages" style="height:75vh; padding-left:1vw; padding-right:1vw;"><center>Start chatting</center></div>
+			<div id = "InputDiv">
+				<div class="input-group mb-3">
+					<input type="text" class="form-control" placeholder="Type a message..." id = "textmessage">
+					<div class="input-group-append">
+						<button class = "btn btn-primary" onclick="sendMessage()">Send</button>
+					</div>
+				</div>
+				<!-- <input type = "text" class="form-control" placeholder="Type a message..." id = "textmessage"><button class = "btn" onclick = "sendMessage()">Send</button> -->
+			</div>
+		</div>
+	</div>
+</div>
+</body>
+</html>

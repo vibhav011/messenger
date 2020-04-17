@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ProVerse - Signup</title>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+
+	<!-- jQuery library -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+	<!-- Popper JS -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+
+	<!-- Latest compiled JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
+
+	<style>
+		.container-fluid {
+			margin-right: auto;
+			margin-left: auto;
+			max-width: 400px;
+		}
+	</style>
+	<script>
+		$(document).ready(function(){
+			$("#submitbutton").click(function(){
+				if ($("#pwd").val() != $("#confpwd").val()) {
+					$("#message").html("Passwords do not match");
+				}
+				else {$("form").submit()}
+			});
+		});
+	</script>
+</head>
+<body>
+<div class = "container-fluid">
+	<h2 align = "center">Sign Up</h2><br>
+
+	<form action="{% url 'signuprequest' %}" method="post">
+		{% csrf_token %}
+
+		<div class = "row">
+
+			<div class="form-group col">
+				<label>Firstname*</label>
+				<input type="name" maxlength="25" class="form-control" placeholder="Enter firstname" name="fname" required="true">
+			</div>
+			<div class="form-group col">
+				<label>Lastname*</label>
+				<input type="name" maxlength="25" class="form-control" placeholder="Enter lastname" name="lname" required="true">
+			</div>
+
+		</div>
+
+		<div class="form-group">
+			<label>Username*</label>
+			<input type="text" maxlength="15" class="form-control" placeholder="Enter username" name="username" required="true">
+		</div>
+		<div class="form-group">
+			<label>Create password*</label>
+			<input type="password" maxlength="50" class="form-control" placeholder="Enter password" name="password" id="pwd" required="true">
+		</div>
+		<div class="form-group">
+			<label>Confirm password*</label>
+			<input type="password" maxlength="50" class="form-control" placeholder="Enter password" id="confpwd" required="true">
+		</div>
+	</form>
+		<button id="submitbutton" class="btn btn-primary btn-block">Sign Up</button>
+		<span id = "message" style="color: red"> </span>
+	<br>Have an account ? <a href="{% url 'login' %}">Login</a> here
+</div>
+</body>
+</html>
